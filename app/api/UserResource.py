@@ -28,7 +28,7 @@ def Validation(obj):
         return False
 
 
-
+#
 # class UserCollectionResource(object):
 #     def __init__(self, db):
 #         self.db = db
