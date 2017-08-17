@@ -7,9 +7,9 @@ from app.database import redis_db
 from app.api import UserResource as ur, LocationResource as lr, VisitResource as vr
 #from app.api import LocationResource
 
-redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
-
-conn = redis.from_url(redis_url)
+# redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
+#
+# conn = redis.from_url(redis_url)
 
 
 db = redis_db.RedisStorageEngine()
@@ -30,3 +30,7 @@ api.add_route('/users/new', ur.UserCreateItemResource(db))
 # api.add_route('/visits', vr.VisitCollectionResource(db))
 # api.add_route('/visits/{visit_id}', vr.VisitItemResource(db))
 # api.add_route('/visits/new', vr.VisitCreateItemResource(db))
+
+
+from waitress import serve
+serve(api, listen='*:8080')

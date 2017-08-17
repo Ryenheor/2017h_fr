@@ -1,9 +1,9 @@
+# -*- coding: utf8 -*-
 import json
 import falcon
 import datetime as dt
 # from rq import Queue
 # from rq.job import Job  - это на потом
-
 
 # id - уникальный внешний идентификатор пользователя. Устанавливается тестирующей системой и используется затем,
 # для проверки ответов сервера. 32-разрядное целое число.
@@ -28,30 +28,6 @@ def Validation(obj):
         return False
 
 
-#
-# class UserCollectionResource(object):
-#     def __init__(self, db):
-#         self.db = db
-#
-#     def on_post(self, req, resp):
-#         try:
-#             raw_json = req.stream.read()
-#         except Exception as ex:
-#             raise falcon.HTTPError(falcon.HTTP_400,
-#                 'Error',
-#                 ex.message)
-#         try:
-#             result_json = json.loads(raw_json.decode("utf-8"), encoding='utf-8')
-#             connection = self.db.connection()
-#             # парсить
-#             connection.set("user:"+result_json['id'], result_json)
-#         except ValueError:
-#             raise falcon.HTTPError(falcon.HTTP_400,
-#                 'Malformed JSON',
-#                 'Could not decode the request body. The JSON was incorrect.')
-
-
-
 class UserItemResource(object):
     def __init__(self, db):
         self.db = db
@@ -59,35 +35,38 @@ class UserItemResource(object):
     def on_get(self, req, resp, user_id):
         try:
             connection = self.db.connection()
-        except Exception as ex:
-            pass
+            result = connection.get("user:"+user_id)
 
-        result = connection.get("user:"+user_id)
-        # obj = json.load(result)
-        # print (result.decode("utf-8") )
-        if result is None:
-            resp.body = {}
-            resp.status = falcon.HTTP_404
-        else:
-            resp.body = json.dumps(result.decode("utf-8"),ensure_ascii=False)
-            resp.status = falcon.HTTP_200
+            try:
+                if result is None:
+                    resp.body = json.dumps("{}",ensure_ascii=False)
+                    resp.status = falcon.HTTP_404
+                else:
+                    result = result.decode("utf-8")
+                    resp.body = json.dumps(result, ensure_ascii=False)
+                    resp.status = falcon.HTTP_200
+            except Exception as ex:
+                raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
+
+        except Exception as ex:
+             raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
+
 
     def on_post(self, req, resp, user_id):
         try:
             raw_json = req.stream.read()
         except Exception as ex:
-            raise falcon.HTTPError(falcon.HTTP_400,
-                'Error',
-                ex.message)
+            raise falcon.HTTPError(falcon.HTTP_400,'Error',ex.message)
         try:
-            result_json = json.loads(raw_json.decode("utf-8"), encoding='utf-8')
-            connection = self.db.connection()
-            # парсить
-            connection.set("user:"+str(result_json['id']), result_json)
+            result_json = json.loads(raw_json.decode('cp1251'))
+            # TODO: получить элемент, и обновить только те поля,которые пришли!
+            if Validation(result_json):
+                connection = self.db.connection()
+                connection.set("user:"+str(user_id), json.dumps(result_json, ensure_ascii=False))
+            else:
+                raise falcon.HTTPError(falcon.HTTP_400,'Validation error')
         except ValueError:
-            raise falcon.HTTPError(falcon.HTTP_400,
-                'Malformed JSON',
-                'Could not decode the request body. The JSON was incorrect.')
+            raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
 
 
 class UserCreateItemResource(object):
@@ -100,22 +79,43 @@ class UserCreateItemResource(object):
         except Exception as ex:
             raise falcon.HTTPError(falcon.HTTP_400,'Error', ex.message)
         try:
-            # может сломаться
-            result_json = json.loads(raw_json.decode("utf-8"), encoding='utf-8')
-            connection = self.db.connection()
-            print(1)
-            # парсить
-            connection.set("user:"+str(result_json['id']), result_json)
-            # if Validation(result_json):
-            #
-            #     connection.set("user:"+result_json['id'], result_json)
-            # else :
-            #     resp.status = falcon.HTTP_400
-            #connection.set("user:"+result_json['id'], result_json)
+            result_json = json.loads(raw_json.decode('cp1251'))
+            if Validation(result_json):
+                connection = self.db.connection()
+                connection.set("user:"+str(result_json['id']), json.dumps(result_json, ensure_ascii=False))
+            else:
+                raise falcon.HTTPError(falcon.HTTP_400,'Validation error')
         except ValueError:
-            raise falcon.HTTPError(falcon.HTTP_400,
-                'Malformed JSON',
-                'Could not decode the request body. The JSON was incorrect.')
+            raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
+
+
+# Получение списка мест, которые посетил пользователь: /users/<id>/visits.
+# В теле ответа ожидается структура {"visits": [ ... ]}, отсортированная по возрастанию дат, или ошибка 404/400. Подробнее - в примере.
+# Возможные GET-параметры:
+# fromDate - посещения с visited_at > fromDate
+# toDate - посещения с visited_at < toDate
+# country - название страны, в которой находятся интересующие достопримечательности
+# toDistance - возвращать только те места, у которых расстояние от города меньше этого параметра
+# Пример корректного ответа на запрос:
+#
+# GET: /users/1/visits
+# {
+#     "visits": [
+#         {
+#             "mark": 2,
+#             "visited_at": 1223268286,
+#             "place": "Кольский полуостров"
+#         },
+#         {
+#             "mark": 4,
+#             "visited_at": 958656902,
+#             "place": "Московский Кремль"
+#         },
+#         ...
+#      ]
+# }
+def adapt(x):
+    return x.decode("utf-8")
 
 class UserItemVisitsResource(object):
     def __init__(self, db):
@@ -124,15 +124,20 @@ class UserItemVisitsResource(object):
     def on_get(self, req, resp, user_id):
         try:
             connection = self.db.connection()
-        except Exception as ex:
-            pass
-        keys = connection.keys("visit:*_"+user_id+"_*")
-        vals = connection.mget(keys)
-        result  =  list( map(lambda x: x.decode("utf-8"), vals))
+            keys = connection.keys("visit:*_"+user_id+"_*")
+            vals = connection.mget(keys)
+            # TODO: переделать чтобы получали данные в нужном формате
+            result  =  list( map(adapt, vals))
 
-        if result is None:
-            resp.body = {}
-            resp.status = falcon.HTTP_404
-        else:
-            resp.body = json.dumps(result,ensure_ascii=False)
-            resp.status = falcon.HTTP_200
+            try:
+                if result is None:
+                    resp.body = json.dumps("{}",ensure_ascii=False)
+                    resp.status = falcon.HTTP_404
+                else:
+                    resp.body = json.dumps(result,ensure_ascii=False)
+                    resp.status = falcon.HTTP_200
+            except Exception as ex:
+                raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
+
+        except Exception as ex:
+             raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')

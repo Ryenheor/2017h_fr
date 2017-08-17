@@ -48,39 +48,39 @@ if __name__ == '__main__':
     #result = db.keys("visit:*_1_*")
     #result = db.scan_iter(match='visit:*_1_*')
 
-    keys = db.keys("visit:*_1_*")
-    vals = db.mget(keys)
-    print(vals)
-    smth  =  list( map(lambda x: x.decode("utf-8"), vals))
-    print (smth)
+    # keys = db.keys("visit:*_1_*")
+    # vals = db.mget(keys)
+    # print(vals)
+    # smth  =  list( map(lambda x: x.decode("utf-8"), vals))
+    # print (smth)
 
     # jso = pickle.loads(result)
 
 
-    # with open('data/locations_1.json', encoding='utf-8') as data_file:
-    #     data_location = json.load(data_file)
+    with open('data/locations_1.json', encoding='utf-8') as data_file:
+        data_location = json.load(data_file)
 
-    #
-    # for location in data_location["locations"]:
-    #     db.set("location:"+str(location['id']), json.dumps(location,ensure_ascii=False))
-    # print("locations is done")
+
+    for location in data_location["locations"]:
+        db.set("location:"+str(location['id']), json.dumps(location,ensure_ascii=False))
+    print("locations is done")
     #
     with open('data/users_1.json', encoding='utf-8') as data_file:
         data_user = json.load(data_file)
 
     for user in data_user["users"]:
-        print(Validation(user))
+        #print(Validation(user))
 
-        #db.set("user:"+str(user['id']), json.dumps(user, ensure_ascii=False))
+        db.set("user:"+str(user['id']), json.dumps(user, ensure_ascii=False))
 
     print("users is done")
     #
-    # with open('data/visits_1.json', encoding='utf-8') as data_file:
-    #     data_visits = json.load(data_file)
-    #
-    # for visit in data_visits["visits"]:
-    #     db.set("visit:"+str(visit['id'])+"_"+str(visit['user'])+"_"+str(visit['location']), json.dumps(visit, ensure_ascii=False))
-    #
-    # print("visits is done")
+    with open('data/visits_1.json', encoding='utf-8') as data_file:
+        data_visits = json.load(data_file)
+
+    for visit in data_visits["visits"]:
+        db.set("visit:"+str(visit['id'])+"_"+str(visit['user'])+"_"+str(visit['location']), json.dumps(visit, ensure_ascii=False))
+
+    print("visits is done")
 
 #
