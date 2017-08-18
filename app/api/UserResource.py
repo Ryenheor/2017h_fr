@@ -2,6 +2,7 @@
 import json
 import falcon
 import datetime as dt
+import pandas as pd
 # from rq import Queue
 # from rq.job import Job  - это на потом
 
@@ -115,7 +116,33 @@ class UserCreateItemResource(object):
 #      ]
 # }
 def adapt(x):
-    return x.decode("utf-8")
+    return x.decode("cp1251")
+
+# fromDate - посещения с visited_at > fromDate
+# toDate - посещения до visited_at < toDate
+# country - название страны, в которой находятся интересующие достопримечательности
+# toDistance - возвращать только те места, у которых расстояние от города меньше этого параметра
+#, *params
+def adapt_visits(items, connection):
+
+    res = {}
+    res["visits"] = []
+    for item in items:
+        item_obj = item.decode("cp1251")
+        item_obj = json.loads(item_obj)
+
+        location_item = connection.get("location:"+str(item_obj["location"]))
+        location_item = location_item.decode("utf-8")
+        #location_item = json.dumps(location_item)
+        location_item = json.loads(location_item)
+        elem = {}
+        elem["mark"] = item_obj["mark"]
+        elem["visited_at"] = item_obj["visited_at"]
+        elem["place"] = location_item["place"]
+        res["visits"].append(elem)
+    # TODO: отсортировать по возрастанию дат
+    return res
+
 
 class UserItemVisitsResource(object):
     def __init__(self, db):
@@ -126,9 +153,11 @@ class UserItemVisitsResource(object):
             connection = self.db.connection()
             keys = connection.keys("visit:*_"+user_id+"_*")
             vals = connection.mget(keys)
-            # TODO: переделать чтобы получали данные в нужном формате
-            result  =  list( map(adapt, vals))
 
+            # TODO: получать элементы в зависимости от параметров в url-запросе
+            #result  =  list( map(adapt, vals))
+            # result = json.dumps(result,ensure_ascii=False)
+            result = adapt_visits(vals,connection)
             try:
                 if result is None:
                     resp.body = json.dumps("{}",ensure_ascii=False)

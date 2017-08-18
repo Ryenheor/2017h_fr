@@ -3,16 +3,16 @@ import redis
 import os
 
 #from app.api import LocationResource
-from app.database import redis_db
+from app.database import RedisStorageEngine
 from app.api import UserResource as ur, LocationResource as lr, VisitResource as vr
 #from app.api import LocationResource
 
 # redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
-#
+#host='localhost', port=6379, db='db0'
 # conn = redis.from_url(redis_url)
 
 
-db = redis_db.RedisStorageEngine()
+db = RedisStorageEngine.RedisStorageEngine('localhost', 6379, 'db0')
 api = application = falcon.API()
 
 #api.add_route('/users', ur.UserCollectionResource(db))
