@@ -20,8 +20,8 @@ def Validation(obj):
 
 
 if __name__ == '__main__':
-    redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
-    conn = redis.from_url(redis_url)
+    # redis_url = os.getenv('REDISTOGO_URL', 'redis://localhost:6379')
+    # conn = redis.from_url(redis_url)
     pool = redis.ConnectionPool(host='localhost', port=6379, db='db0')
     db = redis.Redis(connection_pool=pool)
     # таким образом можно добавить новый элемент

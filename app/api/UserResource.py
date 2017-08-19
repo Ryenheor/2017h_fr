@@ -19,7 +19,7 @@ def Validation(obj):
             return False
         if obj['gender'] !="m" and obj['gender']!='f':
             return False
-        date = dt.datetime.fromtimestamp(obj['birth_date'])
+        date = convert_date(obj['birth_date'])
         print("validate data")
         if date < dt.datetime(1930, 1, 1) or date > dt.datetime(1999, 1, 1):
             print("smth wrong data")
@@ -28,6 +28,12 @@ def Validation(obj):
     except:
         return False
 
+
+def convert_date(timestamp_data):
+    if timestamp_data < 0:
+        return dt.datetime(1970, 1, 1) + dt.timedelta(seconds=timestamp_data)
+    else:
+        return dt.datetime.utcfromtimestamp(timestamp_data)
 
 class UserItemResource(object):
     def __init__(self, db):
@@ -123,23 +129,35 @@ def adapt(x):
 # country - название страны, в которой находятся интересующие достопримечательности
 # toDistance - возвращать только те места, у которых расстояние от города меньше этого параметра
 #, *params
-def adapt_visits(items, connection):
+def adapt_visits(items, connection, **params):
 
     res = {}
     res["visits"] = []
     for item in items:
         item_obj = item.decode("cp1251")
         item_obj = json.loads(item_obj)
+        is_valid = True
+        if ("fromDate" in params and item_obj['visited_at']>=int(params["fromDate"])) or \
+           ("toDate" in params and item_obj['visited_at']<=int(params["fromDate"])):
+            is_valid = False
 
-        location_item = connection.get("location:"+str(item_obj["location"]))
-        location_item = location_item.decode("utf-8")
-        #location_item = json.dumps(location_item)
-        location_item = json.loads(location_item)
-        elem = {}
-        elem["mark"] = item_obj["mark"]
-        elem["visited_at"] = item_obj["visited_at"]
-        elem["place"] = location_item["place"]
-        res["visits"].append(elem)
+        if is_valid is True:
+            location_item = connection.get("location:"+str(item_obj["location"]))
+            location_item = location_item.decode("utf-8")
+            #location_item = json.dumps(location_item)
+            location_item = json.loads(location_item)
+
+
+            if ("country" in params and location_item['country']==params["country"]) or \
+               ("toDistance" in params and location_item['distance']>=int(params["toDistance"])):
+                is_valid = False
+
+            if is_valid is True:
+                elem = {}
+                elem["mark"] = item_obj["mark"]
+                elem["visited_at"] = item_obj["visited_at"]
+                elem["place"] = location_item["place"]
+                res["visits"].append(elem)
     # TODO: отсортировать по возрастанию дат
     return res
 
@@ -154,10 +172,17 @@ class UserItemVisitsResource(object):
             keys = connection.keys("visit:*_"+user_id+"_*")
             vals = connection.mget(keys)
 
+            # TODO: вот эту жесть переписать
+            # TODO: сделать валидацию на параметры
+            if req.params is not None:
+                for key in req.params:
+                    if key not in ["fromDate","toDate","country","toDistance"]:
+                        raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
+
             # TODO: получать элементы в зависимости от параметров в url-запросе
             #result  =  list( map(adapt, vals))
             # result = json.dumps(result,ensure_ascii=False)
-            result = adapt_visits(vals,connection)
+            result = adapt_visits(items=vals,connection=connection,**req.params)
             try:
                 if result is None:
                     resp.body = json.dumps("{}",ensure_ascii=False)

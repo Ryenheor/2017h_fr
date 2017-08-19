@@ -12,7 +12,7 @@ from app.api import UserResource as ur, LocationResource as lr, VisitResource as
 # conn = redis.from_url(redis_url)
 
 
-db = RedisStorageEngine.RedisStorageEngine('localhost', 6379, 'db0')
+db = RedisStorageEngine.RedisStorageEngine()
 api = application = falcon.API()
 
 #api.add_route('/users', ur.UserCollectionResource(db))
