@@ -2,6 +2,7 @@
 import json
 import falcon
 import datetime as dt
+from operator import itemgetter
 import pandas as pd
 # from rq import Queue
 # from rq.job import Job  - это на потом
@@ -28,12 +29,52 @@ def Validation(obj):
     except:
         return False
 
+def ValidationEdit(obj, objold):
+    try:
+        if "email" in obj:
+            if len(obj['email']) > 100:
+                return False, None
+            else:
+                objold['email'] = obj['email']
+        if 'first_name' in obj:
+            if len(obj['first_name']) > 50:
+                return False, None
+            else:
+                objold['first_name'] = obj['first_name']
+        if 'last_name' in obj:
+            if len(obj['last_name']) > 50:
+                return False, None
+            else:
+                objold['last_name'] = obj['last_name']
+        if 'gender' in obj:
+            if obj['gender'] !="m" and obj['gender']!='f':
+                return False, None
+            else:
+                objold['gender'] = obj['gender']
+
+        if 'birth_date' in obj:
+            date = convert_date(obj['birth_date'])
+            if date < dt.datetime(1930, 1, 1) or date > dt.datetime(1999, 1, 1):
+                return False , None
+            else:
+                objold['birth_date'] = obj['birth_date']
+        return True, objold
+    except:
+        return False, None
+
 
 def convert_date(timestamp_data):
     if timestamp_data < 0:
         return dt.datetime(1970, 1, 1) + dt.timedelta(seconds=timestamp_data)
     else:
         return dt.datetime.utcfromtimestamp(timestamp_data)
+
+def intTryParse(value):
+    try:
+        res = int(value)
+        return True
+    except ValueError:
+        return False
 
 class UserItemResource(object):
     def __init__(self, db):
@@ -67,9 +108,15 @@ class UserItemResource(object):
         try:
             result_json = json.loads(raw_json.decode('cp1251'))
             # TODO: получить элемент, и обновить только те поля,которые пришли!
-            if Validation(result_json):
+            connection = self.db.connection()
+            result = connection.get("user:"+user_id)
+            if result is None:
+                raise falcon.HTTPError(falcon.HTTP_404,'Not found')
+            result = json.loads(result.decode('cp1251'))
+            is_valid, updated_result = ValidationEdit(result_json, result)
+            if is_valid:
                 connection = self.db.connection()
-                connection.set("user:"+str(user_id), json.dumps(result_json, ensure_ascii=False))
+                connection.set("user:"+str(user_id), json.dumps(updated_result, ensure_ascii=False))
             else:
                 raise falcon.HTTPError(falcon.HTTP_400,'Validation error')
         except ValueError:
@@ -87,6 +134,7 @@ class UserCreateItemResource(object):
             raise falcon.HTTPError(falcon.HTTP_400,'Error', ex.message)
         try:
             result_json = json.loads(raw_json.decode('cp1251'))
+
             if Validation(result_json):
                 connection = self.db.connection()
                 connection.set("user:"+str(result_json['id']), json.dumps(result_json, ensure_ascii=False))
@@ -155,10 +203,12 @@ def adapt_visits(items, connection, **params):
             if is_valid is True:
                 elem = {}
                 elem["mark"] = item_obj["mark"]
-                elem["visited_at"] = item_obj["visited_at"]
+                elem["visited_at"] = int(item_obj["visited_at"])
                 elem["place"] = location_item["place"]
                 res["visits"].append(elem)
     # TODO: отсортировать по возрастанию дат
+
+    res["visits"] = sorted(res["visits"], key=itemgetter('visited_at'))
     return res
 
 
@@ -178,7 +228,9 @@ class UserItemVisitsResource(object):
                 for key in req.params:
                     if key not in ["fromDate","toDate","country","toDistance"]:
                         raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
-
+                    if key in ["fromDate","toDate","toDistance"]:
+                        if not intTryParse(req.params[key]):
+                            raise falcon.HTTPError(falcon.HTTP_400,'The JSON was incorrect.')
             # TODO: получать элементы в зависимости от параметров в url-запросе
             #result  =  list( map(adapt, vals))
             # result = json.dumps(result,ensure_ascii=False)
