@@ -3,6 +3,8 @@ import json
 import falcon
 import datetime as dt
 import numpy as np
+from dateutil.relativedelta import relativedelta
+import calendar
 import math
 from operator import itemgetter
 import pandas as pd
@@ -159,8 +161,16 @@ def adapt_locations(items, connection, **params):
         item_obj = item.decode("cp1251")
         item_obj = json.loads(item_obj)
         is_valid = True
-        if ("fromDate" in params and item_obj['visited_at']>=int(params["fromDate"])) or \
-           ("toDate" in params and item_obj['visited_at']<=int(params["fromDate"])):
+
+
+        now = dt.datetime.now() - relativedelta(years = int(params["fromDate"]))
+        timestampFrom = calendar.timegm(now.timetuple())
+
+        now2 = dt.datetime.now() - relativedelta(years = int(params["toDate"]))
+        timestampTo = calendar.timegm(now2.timetuple())
+
+        if ("fromDate" in params and item_obj['visited_at']>timestampFrom) or \
+           ("toDate" in params and item_obj['visited_at']<timestampTo):
             is_valid = False
 
         if is_valid is True:
@@ -178,7 +188,8 @@ def adapt_locations(items, connection, **params):
             if is_valid is True:
                 res.append(item_obj["mark"])
     res = round(np.mean(res),5)
-    return {res}
+
+    return {"avg":res}
 
 
 class LocationAVGResource(object):
