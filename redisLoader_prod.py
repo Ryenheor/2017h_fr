@@ -15,9 +15,9 @@ if __name__ == '__main__':
 
     THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
-    my_file = os.path.join(THIS_FOLDER, 'tmp/data.zip')
+    my_file = os.path.join(THIS_FOLDER, 'tmp/data_train.zip')
     folder_name = os.path.join(THIS_FOLDER, 'prod_data')
-    copyfile('/tmp/data/data.zip', my_file)
+    # copyfile('/tmp/data/data.zip', my_file)
     shutil.rmtree(folder_name,ignore_errors=True)
 
     with zipfile.ZipFile(my_file, "r") as z:
