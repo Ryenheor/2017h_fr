@@ -3,7 +3,7 @@ import redis
 import os
 
 #from app.api import LocationResource
-from app.database import RedisStorageEngine, BaseDB
+from app.database import RedisStorageEngine, Repository
 from app.api import UserResource as ur, LocationResource as lr, VisitResource as vr
 #from app.api import LocationResource
 
@@ -13,8 +13,8 @@ from app.api import UserResource as ur, LocationResource as lr, VisitResource as
 # TODO: вывести валидацию в отдельный модуль
 # TODO: унести работу с моделью в отдельный модуль
 
-db = RedisStorageEngine.RedisStorageEngine()
-db = BaseDB.RedisRepository()
+#db = RedisStorageEngine.RedisStorageEngine()
+db = Repository.RedisRepository()
 api = application = falcon.API()
 
 api.add_route('/users/{user_id}', ur.UserItemResource(db))

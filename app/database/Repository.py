@@ -2,6 +2,7 @@ import json
 
 from app.database import RedisStorageEngine as engine
 from app.helpers.Validator import Validator as vl
+from app.helpers.ReturnAdapter import AdaptReturn as ar
 
 
 class AbstractRepository:
@@ -27,9 +28,8 @@ class RedisRepository(AbstractRepository):
     def __init__(self):
         connect = engine.RedisStorageEngine()
         self.db = connect.connection()
-        #self.validator =
 
-    def create(self,table, obj):
+    def create(self, table, obj):
         try:
             validator = vl.Validator(table,"create")
             if validator(obj):
@@ -40,7 +40,7 @@ class RedisRepository(AbstractRepository):
         except Exception as ex:
             raise ValueError
 
-    def edit(self,table, id, fields):
+    def edit(self, table, id, fields):
         try:
             pass
             editable = self.get_by_id(table,id)
@@ -57,9 +57,9 @@ class RedisRepository(AbstractRepository):
         except Exception as ex:
             raise ValueError
 
-    def get_by_id(self,table,id):
+    def get_by_id(self, table, id):
         try:
-            res = self.db.get(table+":"+id)
+            res = self.db.get(table+":"+str(id))
             if res is not None:
                 return res.decode("utf-8")
             else:
@@ -67,12 +67,13 @@ class RedisRepository(AbstractRepository):
         except:
             raise ValueError
 
-    def get_by_field(self,table, **fields):
+    def get_by_field(self, table, mask):
         try:
-            pass
-
-        except Exception as e:
-            return False, 'Failed to create item: '+ str(e)
+            keys = self.db.keys(table+":"+mask)
+            vals = self.db.mget(keys)
+            return vals
+        except Exception as ex:
+            raise ValueError
 
 
 # class MySqlRepository(AbstractRepository):

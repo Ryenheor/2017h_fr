@@ -1,5 +1,6 @@
 from app.helpers.Validator.ValidateUser import ValidateUser as vu
-
+from app.helpers.Validator.ValidateLocation import ValidateLocation as vl
+from app.helpers.Validator.ValidateVisit import ValidateVisit as vv
 
 def Validator(table, action):
     if table=="user":
@@ -9,11 +10,11 @@ def Validator(table, action):
             return vu.ValidateCreateUser
     elif table=="location":
         if action=="edit":
-            return vu.ValidateEditLocation
+            return vl.ValidateEditLocation
         else: #create
-            return vu.ValidateCreateLocation
+            return vl.ValidateCreateLocation
     elif table=="visit":
         if action=="edit":
-            return vu.ValidateEditVisit
+            return vv.ValidateEditVisit
         else: #create
-            return vu.ValidateCreateVisit
+            return vv.ValidateCreateVisit
